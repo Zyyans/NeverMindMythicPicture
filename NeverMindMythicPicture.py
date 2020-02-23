@@ -1,3 +1,4 @@
+from pathlib import Path
 from os import walk as os_walk
 
 from PIL.Image import Image
@@ -76,6 +77,7 @@ if __name__ == '__main__':
 
     print("\n  NeverMindMythicPicture v2.1\n  Author: Hodo7am, Zyyans")
 
+    path = Path.cwd()
     input("\n  请将图片放入与本软件同目录的Pictures文件夹\
         \n  按回车键开始处理图片")
     picture_list = get_picture_list()
