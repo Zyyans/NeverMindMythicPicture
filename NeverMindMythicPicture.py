@@ -44,8 +44,7 @@ def skill_make(skill_face, skill_clarity, pixel, pixel_size_x, pixel_size_y):
                     if picture_path[-3:] == "png" and pixel_color == "#FFFFFF":
                         continue
 
-                    skill_fo = 0
-                    skill_so = 0
+                    skill_fo = skill_so = 0
                     if skill_face == 'E':
                         skill_fo = round((pixel_size_x / 2 - pixel_x) / 10, 1)
                         skill_so = round((pixel_size_y / 2 - pixel_y) / 10, 1)

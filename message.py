@@ -1,0 +1,8 @@
+head = "\n  NeverMindMythicPicture v2.3\n  Author: Hodo7am, Zyyans."
+dirStr = "\n  请将需要处理的图片放入Pictures文件夹内.\n  本软件仅支持JPG, PNG和GIF格式的图片.\n  按回车键以继续..."
+pathFoundStr = "\n  已找到%d张图片.\n  按回车键以开始处理..."
+pathNotFoundStr = "\n  未找到任何图片.\n  按回车键以再次查找..."
+modeStr = "\n  1.普通模式: 以不同参数分别处理每张图片.\n  2.批量模式: 以相同的参数处理所有图片, 并按字典序整合在同一技能组中.\n  请选择您想要的处理模式 >> "
+illegalStr = "  输入不合法, 请重新输入 >> "
+doneStr = "  技能生成完毕."
+allDoneStr = "\n  所有图片处理完毕.\n  按回车键以退出..."
