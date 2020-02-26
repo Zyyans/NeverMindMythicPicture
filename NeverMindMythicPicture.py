@@ -37,7 +37,7 @@ msg = {
         \n  请输入相应的字母: E, W, S, N.\
         \n  请输入您想要的图片朝向 >> ",
     "head": "\
-        \n  NeverMindMythicPicture v2.3\
+        \n  NeverMindMythicPicture vhonoka\
         \n  Author: Hodo7am, Zyyans.\
         \n\
         \n  本软件将自动忽略PNG格式图片的纯白色像素.",
@@ -95,7 +95,7 @@ def is_float(string):
 def get_color(raw_color):
     """获取颜色并转换格式."""
     color = '#'
-    for value in raw_color:
+    for value in raw_color[:-1]:
         color += str(hex(int(value)))[-2:].replace('x', '0')
     return color.upper()
 
@@ -114,10 +114,18 @@ def input_check(string, mode, condition=None):
     return target
 
 
+def get_pic_info(path):
+    """获取图片的像素颜色和尺寸."""
+    temp = Image.open(path).convert("RGBA")
+    pixel, size_x, size_y = temp.load(), *temp.size
+    temp.close()
+    return pixel, size_x, size_y
+
+
 def ask(path):
     """JPG, PNG格式图片参数设置."""
-    temp = Image.open(path).convert("RGB")
-    pixel, size_x, size_y = temp.load(), *temp.size[:2]
+    temp = Image.open(path).convert("RGBA")
+    size_x, size_y = temp.size[:2]
     temp.close()
 
     name = input_check(msg["name"] % path.name, "not_equal", "")
@@ -128,12 +136,12 @@ def ask(path):
     text = msg["text_dict"][mode]
     if mode == '2':
         text = text["EW"] if face == 'E' or face == 'W' else text["SN"]
-    return pixel, size_x, size_y, name, mode, face, int(clarity), text
+    return name, mode, face, int(clarity), text
 
 
-def gif_ask(settings):
+def gif_ask(pic_info, settings):
     """GIF格式图片参数设置."""
-    size_x, size_y = settings[1], settings[2]
+    size_x, size_y = pic_info[-2:]
     gif_dir_path = dir_path / path.stem
     gif_dir_path.mkdir(exist_ok=True)
 
@@ -149,49 +157,38 @@ def build(path, pixel, size_x, size_y, name, mode, face, clarity, text):
     text_list = []
     for x in range(0, size_x, clarity):
         for y in range(0, size_y, clarity):
-            color = get_color(pixel[x, y])
-            if path.suffix == ".png" and color == "#FFFFFF":
+            if not pixel[x, y][3]:
                 continue
+            color = get_color(pixel[x, y])
             if mode == '1': # 神奇代码, 别乱动.
-                if face == 'E':
+                if face in "EW":
                     xo = round((size_x / 2 - x) / 10, 1)
                     yo = round((size_y / 2 - y) / 10, 1)
-                elif face == 'W':
-                    xo = round((x - size_x / 2) / 10, 1)
-                    yo = round((y - size_y / 2) / 10, 1)
-                elif face == 'S':
+                else:
                     xo = round((y - size_y / 2) / 10, 1)
                     yo = round((size_y / 2 - x) / 10, 1)
-                else:
-                    xo = round((size_x / 2 - y) / 10, 1)
-                    yo = round((x - size_x / 2) / 10, 1)
-            if mode == '2':
-                if face == 'E':
-                    xo = round((size_x / 2 - x) / 10, 1)
-                    yo = round((size_y / 2 - y) / 10, 1)
-                if face == 'W':
-                    xo = round((x - size_x / 2) / 10, 1)
-                    yo = round((size_y / 2 - y) / 10, 1)
-                if face == 'S':
-                    xo = round((size_x / 2 - x) / 10, 1)
-                    yo = round((size_y / 2 - y) / 10, 1)
-                if face == 'N':
-                    xo = round((x - size_x / 2) / 10, 1)
-                    yo = round((size_y / 2 - y) / 10, 1)
+                if face in "WN":
+                    xo, yo = -xo, -yo
+            else:
+                xo = round((size_x / 2 - x) / 10, 1)
+                yo = round((size_y / 2 - y) / 10, 1)
+                if face in "WN":
+                    xo = -xo
             text_list.append(text % (color, xo, yo))
     return text_list
 
 
-def gif_build(path, settings, gif_dir_path, suffix, delay, scale):
+def gif_build(path, pic_info, settings, gif_dir_path, suffix, delay, scale):
     """GIF图片切割, 生成技能并汇总."""
-    size_x, size_y = settings[1:3]
+    size_x, size_y = pic_info[-2:]
     im = Image.open(path)
 
     try:
         i = 0
         while True:
             im.resize((round(size_x / scale), round(size_y / scale))).convert(
-                'RGB').save(gif_dir_path / ("%s.%s" % (str(i).zfill(4), suffix)))
+                "RGBA").save(gif_dir_path / (
+                    "%s.%s" % (str(i).zfill(4), suffix)))
             i += 1
             im.seek(i)
     except EOFError:
@@ -199,8 +196,8 @@ def gif_build(path, settings, gif_dir_path, suffix, delay, scale):
 
     all_list = []
     gif_paths = [path for path in gif_dir_path.glob("*." + suffix)]
-    for gif_path in gif_paths:
-        text_list = build(gif_path, *settings)
+    for gif_path in gif_paths[1:]:
+        text_list = build(gif_path, *get_pic_info(gif_path), *settings)
         all_list += text_list
         if gif_path != gif_paths[-1]:
             all_list.append(msg["delay_text"] % delay)
@@ -232,15 +229,16 @@ mode = input_check(msg["mode"], "in", "12")
 if mode == '1':
     for path in paths:
         settings = ask(path)
-        name = settings[3]
+        name = settings[0]
         if path.suffix == ".gif":
             with open(name + ".yml", 'w') as yaml:
                 yaml.write(name + msg["skill_part"] + '\n'.join(
-                    gif_build(path, settings, *gif_ask(settings))) + '\n')
+                    gif_build(path, get_pic_info(path), settings, *gif_ask(
+                        get_pic_info(path), settings))) + '\n')
         else:
             with open(name + ".yml", 'w') as yaml:
                 yaml.write(name + msg["skill_part"] + '\n'.join(
-                    build(path, *settings)) + '\n')
+                    build(path, *get_pic_info(path), *settings)) + '\n')
         print(msg["done"])
     input(msg["all_done"])
 else:
