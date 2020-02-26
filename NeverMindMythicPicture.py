@@ -37,7 +37,7 @@ msg = {
         \n  请输入相应的字母: E, W, S, N.\
         \n  请输入您想要的图片朝向 >> ",
     "head": "\
-        \n  NeverMindMythicPicture vhonoka\
+        \n  NeverMindMythicPicture v2.3.1\
         \n  Author: Hodo7am, Zyyans.\
         \n\
         \n  本软件将自动忽略PNG格式图片的纯白色像素.",
