@@ -160,7 +160,7 @@ def build(path, pixel, size_x, size_y, name, mode, face, clarity, text):
             if not pixel[x, y][3]:
                 continue
             color = get_color(pixel[x, y])
-            if mode == '1': # 神奇代码, 别乱动.
+            if mode == '1':  # 神奇代码, 别乱动.
                 if face in "EW":
                     xo = round((size_x / 2 - x) / 10, 1)
                     yo = round((size_y / 2 - y) / 10, 1)
