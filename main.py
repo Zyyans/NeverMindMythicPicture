@@ -1,5 +1,6 @@
-from Settings import Settings
+from Settings import PictureSettings, TextureSettings
 
+from json import load
 from os import system
 from pathlib import Path
 from PIL import Image
@@ -33,6 +34,7 @@ def cut(path, setiings, gif_dir_path):
 
 
 def magic(path, size, scale=False):
+
     temp = Image.open(path).convert('RGB') if path.suffix == '.jpg' else Image.open(path).convert('RGBA')
     pixel, sx, sy = temp.load(), *temp.size
     temp.close()
@@ -63,6 +65,7 @@ def magic(path, size, scale=False):
 
 
 def build(path, settings):
+
     if settings.magic != 1:
         pixel, sx, sy = magic(path, settings.magic, settings.magic_scale)
     else:
@@ -85,6 +88,7 @@ def build(path, settings):
 
     for x in range(0, sx, settings.clarity):
         for y in range(0, sy, settings.clarity):
+
             if path.suffix == '.png' and not pixel[x, y][3]:
                 continue
             color = get_color(pixel[x, y])
@@ -100,11 +104,13 @@ def build(path, settings):
                 xo, yo = round((sx / 2 - x) / 10, 1), round((sy / 2 - y) / 10, 1)
                 if settings.face in ['W', 'N']:
                     xo = -xo
-            texts.append(text % (settings.particle, color, xo, yo))
+
+            texts.append(text % (settings.particle, color, xo * settings.density, yo * settings.density))
+
     return texts
 
 
-if __name__ == '__main__':
+def picture_main():
 
     title()
     dir_path = Path().cwd() / 'Pictures'
@@ -141,7 +147,7 @@ if __name__ == '__main__':
     if mode == '1':
         for path in paths:
             if path.suffix == '.gif':
-                settings = Settings(True).ask(path, True)
+                settings = PictureSettings(True).ask(path, True)
                 gif_dir_path = path.parent / path.stem
                 gif_dir_path.mkdir(exist_ok=True)
                 cut(path, settings, gif_dir_path)
@@ -159,11 +165,11 @@ if __name__ == '__main__':
 
                     rmtree(gif_dir_path)
             else:
-                settings = Settings().ask(path)
+                settings = PictureSettings().ask(path)
                 with open(f'{skill_path / settings.name}.yml', 'w', encoding='utf-8') as yml:
                     yml.write(f'{settings.name}:\n    Skills:\n' + '\n'.join(build(path, settings)) + '\n')
     else:
-        settings = Settings(gif, True).ask(gif=True, batch=True)
+        settings = PictureSettings(gif, True).ask(gif=True, batch=True)
         with open(f'{skill_path / settings.name}.yml', 'w', encoding='utf-8') as yml:
             i = 0
             texts = []
@@ -184,6 +190,97 @@ if __name__ == '__main__':
                     yml.write(f'{name}:\n    Skills:\n' + '\n'.join(build(path, settings)) + '\n')
                     texts.append('    - skill{s=%s}\n    - delay %s' % (name, settings.global_delay))
                     i += 1
-            yml.write(f'{settings.name}:\n    Skills:\n' + '\n'.join(texts))
+            yml.write(f'{settings.name}:\n    Skills:\n' + '\n'.join(texts) + '\n')
 
-    input('\n  所有图片处理完成.\n  按回车键以退出...')
+    input('\n  所有图片处理完成, 请到 Skills 文件夹获取生成的技能.\n  按回车键以退出.')
+
+
+def texture_main():
+
+    title()
+    print('  !!! 本功能只适用于规则排列的 voxel 材质.')
+
+    dir_path = Path().cwd() / 'Textures'
+    dir_path.mkdir(exist_ok=True)
+    input('\n  初始化完成.'
+          '\n  请在 Textures 文件夹中放入你需要处理的材质.'
+          '\n  请将 JSON 文件与对应的 PNG 文件命名为同一名称.'
+          '\n  例: Zyyans.json, Zyyans.png.'
+          '\n  按回车键以继续.'
+          '\n  ')
+
+    while True:
+        json_paths = [path for path in dir_path.glob('*.json')]
+        png_paths = [path for path in dir_path.glob('*.png')]
+        if not len(json_paths) and not len(png_paths):
+            input('  未找到任何材质.\n  按回车键以重新查找.\n  ')
+            continue
+        if len(json_paths) != len(png_paths):
+            input('  文件无法对应.\n  请在确认文件正确后按回车键以继续.\n  ')
+            continue
+        temp = [path.stem for path in png_paths]
+        for path in json_paths:
+            if path.stem not in temp:
+                input('  文件无法对应.\n  请在确认文件正确后按回车键以继续.\n  ')
+                continue
+        input(f'  已找到 {len(json_paths)} 个材质.\n  按回车键以开始处理.\n  ')
+        break
+
+    skill_path = Path().cwd() / 'Skills'
+    skill_path.mkdir(exist_ok=True)
+
+    for json_path in json_paths:
+
+        settings = TextureSettings().ask(json_path)
+
+        error = False
+        text = '    - effect:particles{p=%s;a=1;c=%s;forwardOffset=%.1f;sideOffset=%.1f;yOffset=%.1f}'
+        texts = []
+
+        json = load(json_path.open('r'))
+        temp = Image.open(json_path.parent / (json_path.stem + '.png'))
+        pixel = temp.convert('RGBA').load()
+        temp.close()
+
+        for element in json['elements']:
+
+            fx, fy, fz = [round(num / settings.size) for num in element['from']]
+            tx, ty, tz = [round(num / settings.size) for num in element['to']]
+
+            colors = []
+            uvs = [[round(pos * settings.scale) for pos in face['uv']] for face in element['faces'].values()]
+            for uv in uvs:
+                [[colors.append(pixel[px, py]) for py in range(uv[1], uv[3])] for px in range(uv[0], uv[2])]
+            try:
+                color = get_color(max(colors, key=colors.count))
+            except ValueError:
+                error = True
+                input('\n  参数或 PNG 图片存在错误, 取色发生问题, 运行中止.\n  按下回车键以跳过本张图片.')
+                break
+
+            for x in range(fx, tx):
+                for y in range(fy, ty):
+                    for z in range(fz, tz):
+                        texts.append(text % (settings.particle, color, round(x * settings.density / 10, 1),
+                                             round(y * settings.density / 10, 1), round(z * settings.density / 10, 1)))
+
+        if not error:
+            with open(f'{skill_path / settings.name}.yml', 'w', encoding='utf-8') as yml:
+                yml.write(f'{settings.name}:\n    Skills:\n' + '\n'.join(texts) + '\n')
+
+    input('\n  所有材质处理完成, 请到 Skills 文件夹获取生成的技能.\n  按回车键以退出.')
+
+
+if __name__ == '__main__':
+
+    title()
+    func = input('  1. 图片转粒子.'
+                 '\n  2. 材质转粒子.'
+                 '\n  请选择你需要的功能 >> ')
+    while func not in ['1', '2']:
+        func = input('  输入有误, 请重新输入 >> ')
+
+    if func == '1':
+        picture_main()
+    else:
+        texture_main()
